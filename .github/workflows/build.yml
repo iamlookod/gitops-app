@@ -45,6 +45,6 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           REPO: git@github.com:iamlookod/gitops-config.git
         run: |
-          la
+          ls -la
           echo $GITHUB_TOKEN
           echo $OWNER
