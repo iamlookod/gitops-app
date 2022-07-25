@@ -35,16 +35,17 @@ jobs:
           echo Add other actions to build,
           echo test, and deploy your project.
 
-      - uses: actions/checkout@v3
+  deploy:
+    runs-on: ubuntu-latest
+    need: [build]
+    steps:
+      - name: Update argocd
+        uses: actions/checkout@v3
         with:
           repository: "${{ github.repository_owner }}/gitops-config"
-
-      - name: Update argocd
+      - run: |
+          cd $APP
+          yq e ".spec.tag=\"$TAG\"" -i values.yaml
+          cat values.yaml
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: git@github.com:iamlookod/gitops-config.git
-        run: |
-          ls -la
-          echo $GITHUB_TOKEN
-          echo $OWNER
+          TAG: $(git describe --tag --always)
