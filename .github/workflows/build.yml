@@ -49,7 +49,9 @@ jobs:
           yq e ".replicaCount=2" -i values.yaml
           yq e ".image.tag=\"$TAG\"" -i values.yaml
           cat values.yaml
-          git remote set-url origin https://iamlookod:${{ github.token }}@github.com/iamlookod/gitops-config.git
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git config user.password ${{ gtihub.token }}
           git add .
           git commit -m "update ${{ github.repository }} version $TAG"
           git push
