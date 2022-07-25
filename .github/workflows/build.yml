@@ -44,6 +44,7 @@ jobs:
         with:
           repository: "${{ github.repository_owner }}/gitops-config"
       - run: |
+          cd gitops-app
           ls -la
           yq e ".spec.tag=\"$TAG\"" -i values.yaml
           cat values.yaml
