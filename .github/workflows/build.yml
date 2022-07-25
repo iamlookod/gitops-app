@@ -57,3 +57,4 @@ jobs:
           git push
         env:
           TAG: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
