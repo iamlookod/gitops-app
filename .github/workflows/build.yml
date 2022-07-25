@@ -35,12 +35,16 @@ jobs:
           echo Add other actions to build,
           echo test, and deploy your project.
 
+      - uses: actions/checkout@v3
+        with:
+          repository: gitops-config
+
       - name: Update argocd
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OWNER: ${{ github.repository_owner }}
           REPO: git@github.com:iamlookod/gitops-config.git
         run: |
+          la
           echo $GITHUB_TOKEN
           echo $OWNER
-          gh repo clone $REPO
