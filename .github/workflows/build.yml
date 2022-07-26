@@ -73,18 +73,18 @@ jobs:
       - run: |
           cd gitops-app
           yq e ".replicaCount=2" -i values.yaml
-          yq e ".image.tag=\"$IMAGE_TAG\"" -i values.yaml
+          yq e ".image.tag=\"$env.IMAGE_TAG\"" -i values.yaml
           git add .
-          git commit -m "Update ${{ SERVICE_NAME }} version $IMAGE_TAG"
+          git commit -m "Update ${{ env.SERVICE_NAME }} version $env.IMAGE_TAG"
         env:
           GITHUB_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
 
       - name: Push changes & create merge request
         shell: bash
         env:
-          GIT_BRANCH: "deploy/gitops-app-${{ IMAGE_TAG }}"
+          GIT_BRANCH: "deploy/gitops-app-${{ env.IMAGE_TAG }}"
           GITHUB_TOKEN: ${{ env.GITOPS_REPO_TOKEN }}
-          GIT_PULL_REQUEST: "Deploy ${{ SERVICE_NAME }} ${{ IMAGE_TAG }}"
+          GIT_PULL_REQUEST: "Deploy ${{ env.SERVICE_NAME }} ${{ env.IMAGE_TAG }}"
         run: |
           if [[ `git --no-pager log "$GIT_BASE_BRANCH..$GIT_BRANCH" --decorate=short --pretty=oneline -n1` ]]; then
             git push origin $GIT_BRANCH
