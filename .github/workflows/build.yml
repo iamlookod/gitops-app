@@ -20,20 +20,25 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    outputs:
+      IMAGE_TAG: ${{ steps.gen-env.outputs.image_tag }}
+
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
-
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+      - name: Generate env
+        id: gen-env
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          # Generate envs for jobs
+          branch="$(echo ${{ github.ref }} | cut  -d '/' -f 3- | sed -e 's|/|-|g')"
+          repository="$(echo ${{ github.repository }} | cut  -d '/' -f 2)"
+          image_tag="$(git describe --tag --always)"
+          echo "::set-output name=repository::$repository"
+          echo "::set-output name=image_tag::$image_tag"
+          echo "::set-output name=image_name::$ECR_REGISTRY/$repository"
+          echo "::set-output name=image_full::$ECR_REGISTRY/$repository:$image_tag"
 
   deploy:
     name: Create MR for deployment
@@ -41,9 +46,11 @@ jobs:
     needs: [build]
     env:
       GIT_EMAIL: action@github.com
-      GIT_NAME: GitHub Action
+      GIT_NAME: ${{ github.actor }}
       GIT_TARGET_REPO: "${{ github.repository_owner }}/gitops-config"
       GIT_BASE_BRANCH: main
+      SERVICE_NAME: ${{ github.event.repository.name }}
+      IMAGE_TAG: ${{ needs.build.outputs.IMAGE_TAG }}
 
     steps:
       - name: Checkout
@@ -58,28 +65,26 @@ jobs:
           git config --global user.name "$GIT_NAME"
 
       - name: Checkout new branch
-        id: get_branch
         env:
-          GIT_BRANCH: "deploy/gitops-app-${{ github.sha }}"
+          GIT_BRANCH: "deploy/gitops-app-${{ IMAGE_TAG }}"
         run: |
           git checkout -b $GIT_BRANCH
 
       - run: |
           cd gitops-app
           yq e ".replicaCount=2" -i values.yaml
-          yq e ".image.tag=\"$TAG\"" -i values.yaml
+          yq e ".image.tag=\"$IMAGE_TAG\"" -i values.yaml
           git add .
-          git commit -m "update ${{ github.repository }} version $TAG"
+          git commit -m "Update ${{ SERVICE_NAME }} version $IMAGE_TAG"
         env:
-          TAG: ${{ github.sha }}
           GITHUB_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
 
       - name: Push changes & create merge request
         shell: bash
         env:
-          GIT_BRANCH: "deploy/gitops-app-${{ github.sha }}"
-          GITHUB_TOKEN: ${{ secrets.GITOPS_REPO_TOKEN }}
-          GIT_PULL_REQUEST: "Deploy api-gateway ${{ github.sha }}"
+          GIT_BRANCH: "deploy/gitops-app-${{ IMAGE_TAG }}"
+          GITHUB_TOKEN: ${{ env.GITOPS_REPO_TOKEN }}
+          GIT_PULL_REQUEST: "Deploy ${{ SERVICE_NAME }} ${{ IMAGE_TAG }}"
         run: |
           if [[ `git --no-pager log "$GIT_BASE_BRANCH..$GIT_BRANCH" --decorate=short --pretty=oneline -n1` ]]; then
             git push origin $GIT_BRANCH
